@@ -1,103 +1,59 @@
 from flask import Flask, request, jsonify
-import sqlite3
-import os
-from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
-# Database setup
-def init_db():
-    conn = sqlite3.connect('keys.db')
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS keys (
-            user_id TEXT PRIMARY KEY,
-            key TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS api_keys (
-            key_hash TEXT PRIMARY KEY,
-            name TEXT NOT NULL
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
-# Simple API key auth (replace with your actual key)
-API_KEY = "your-secure-api-key-here"
-
-def validate_api_key():
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return False
-    provided_key = auth_header.split(' ')[1]
-    return provided_key == API_KEY
+# Simulate the storage of keys (you should use a real database in production)
+keys_db = {}
 
 @app.route('/verify', methods=['POST'])
 def verify_key():
     try:
-        if not validate_api_key():
-            return jsonify({"success": False, "message": "Invalid API key"}), 401
-
-        if not request.is_json:
-            return jsonify({"success": False, "message": "Request must be JSON"}), 400
-
+        # Get the data sent by the Roblox game
         data = request.get_json()
+
+        # Debug: Print received data for troubleshooting
+        print(f"Received data: {data}")
+
         key = data.get('verification_code')
         user_id = data.get('user_id')
 
+        # If key or user_id are missing, return an error response
         if not key or not user_id:
-            return jsonify({"success": False, "message": "Missing verification_code or user_id"}), 400
+            print("Missing verification_code or user_id.")  # Debug log
+            return jsonify({"success": False, "message": "Missing verification_code or user_id."}), 400
 
-        conn = sqlite3.connect('keys.db')
-        cursor = conn.cursor()
-        cursor.execute('SELECT key FROM keys WHERE user_id = ?', (str(user_id),))
-        result = cursor.fetchone()
-        conn.close()
-
-        if result and result[0] == key:
-            # Delete used key
-            conn = sqlite3.connect('keys.db')
-            cursor = conn.cursor()
-            cursor.execute('DELETE FROM keys WHERE user_id = ?', (str(user_id),))
-            conn.commit()
-            conn.close()
+        # Check if the key is valid (match user_id with stored key)
+        if str(user_id) in keys_db and keys_db[str(user_id)] == key:
+            # If the key matches, print "MATCHING"
+            print("MATCHING")
             return jsonify({"success": True, "message": "Key verified successfully!"}), 200
         else:
-            return jsonify({"success": False, "message": "Invalid or expired key"}), 400
+            print("Invalid or expired key.")  # Debug log
+            return jsonify({"success": False, "message": "Invalid or expired key."}), 400
 
     except Exception as e:
-        app.logger.error(f"Error in /verify: {str(e)}")
-        return jsonify({"success": False, "message": "Internal server error"}), 500
+        # Print detailed error message
+        print(f"Error: {str(e)}")  # Print the exact error for debugging
+        return jsonify({"success": False, "message": f"An error occurred: {str(e)}"}), 500
 
+# Route to manually add keys (for testing purposes)
 @app.route('/add_key', methods=['POST'])
 def add_key():
     try:
-        if not validate_api_key():
-            return jsonify({"success": False, "message": "Invalid API key"}), 401
-
         data = request.get_json()
         user_id = data.get('user_id')
         key = data.get('verification_code')
 
-        if not user_id or not key:
-            return jsonify({"success": False, "message": "Missing user_id or verification_code"}), 400
-
-        conn = sqlite3.connect('keys.db')
-        cursor = conn.cursor()
-        cursor.execute('INSERT OR REPLACE INTO keys (user_id, key) VALUES (?, ?)', (str(user_id), key))
-        conn.commit()
-        conn.close()
-
-        return jsonify({"success": True, "message": "Key added successfully"}), 200
-
+        if user_id and key:
+            keys_db[str(user_id)] = key
+            print(f"Added key for user {user_id}: {key}")  # Debug log
+            return jsonify({"success": True, "message": "Key added successfully."}), 200
+        else:
+            print("Missing user_id or verification_code.")  # Debug log
+            return jsonify({"success": False, "message": "Missing user_id or verification_code."}), 400
     except Exception as e:
-        app.logger.error(f"Error in /add_key: {str(e)}")
-        return jsonify({"success": False, "message": "Internal server error"}), 500
+        print(f"Error: {str(e)}")  # Print the exact error for debugging
+        return jsonify({"success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True)
