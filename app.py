@@ -14,6 +14,7 @@ def verify_key():
         # Debug: Print received data for troubleshooting
         print(f"Received data: {data}")
 
+        # Ensure that 'verification_code' and 'user_id' exist in the data
         key = data.get('verification_code')
         user_id = data.get('user_id')
 
@@ -26,6 +27,7 @@ def verify_key():
         if str(user_id) in keys_db and keys_db[str(user_id)] == key:
             # Key is valid, proceed with verification
             del keys_db[str(user_id)]  # Optionally remove the key after verification
+            print(f"Key for user {user_id} verified successfully.")  # Debug log
             return jsonify({"success": True, "message": "Key verified successfully!"}), 200
         else:
             print("Invalid or expired key.")  # Debug log
@@ -39,15 +41,21 @@ def verify_key():
 # Route to manually add keys (for testing purposes)
 @app.route('/add_key', methods=['POST'])
 def add_key():
-    data = request.get_json()
-    user_id = data.get('user_id')
-    key = data.get('verification_code')
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        key = data.get('verification_code')
 
-    if user_id and key:
-        keys_db[str(user_id)] = key
-        return jsonify({"success": True, "message": "Key added successfully."}), 200
-    else:
-        return jsonify({"success": False, "message": "Missing user_id or verification_code."}), 400
+        if user_id and key:
+            keys_db[str(user_id)] = key
+            print(f"Added key for user {user_id}: {key}")  # Debug log
+            return jsonify({"success": True, "message": "Key added successfully."}), 200
+        else:
+            print("Missing user_id or verification_code.")  # Debug log
+            return jsonify({"success": False, "message": "Missing user_id or verification_code."}), 400
+    except Exception as e:
+        print(f"Error: {str(e)}")  # Print the exact error for debugging
+        return jsonify({"success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
