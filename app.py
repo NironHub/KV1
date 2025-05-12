@@ -11,8 +11,15 @@ def verify_key():
     try:
         # Get the JSON data sent by the Roblox game
         data = request.get_json()
+        print(f"Received data: {data}")  # Debug: print received data
+
+        # Extract key and user_id
         key = data.get('verification_code')
         user_id = data.get('user_id')
+
+        # Debug: Check if the expected data is present
+        if not key or not user_id:
+            return jsonify({"success": False, "message": "Missing verification_code or user_id."}), 400
 
         # Check if the key is valid
         if user_id in keys_db and keys_db[user_id] == key:
@@ -23,7 +30,9 @@ def verify_key():
             return jsonify({"success": False, "message": "Invalid or expired key."}), 400
 
     except Exception as e:
-        return jsonify({"success": False, "message": str(e)}), 500
+        print(f"Error: {e}")  # Debug: print the error that occurred
+        return jsonify({"success": False, "message": f"An error occurred: {str(e)}"}), 500
+
 
 # A test route to manually add keys (for testing purposes)
 @app.route('/add_key', methods=['POST'])
