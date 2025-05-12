@@ -19,6 +19,7 @@ def verify_key():
 
         # If key or user_id are missing, return an error response
         if not key or not user_id:
+            print("Missing verification_code or user_id.")  # Debug log
             return jsonify({"success": False, "message": "Missing verification_code or user_id."}), 400
 
         # Check if the key is valid (match user_id with stored key)
@@ -27,11 +28,12 @@ def verify_key():
             del keys_db[str(user_id)]  # Optionally remove the key after verification
             return jsonify({"success": True, "message": "Key verified successfully!"}), 200
         else:
+            print("Invalid or expired key.")  # Debug log
             return jsonify({"success": False, "message": "Invalid or expired key."}), 400
 
     except Exception as e:
         # Print detailed error message
-        print(f"Error: {str(e)}")
+        print(f"Error: {str(e)}")  # Print the exact error for debugging
         return jsonify({"success": False, "message": f"An error occurred: {str(e)}"}), 500
 
 # Route to manually add keys (for testing purposes)
